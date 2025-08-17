@@ -9,6 +9,12 @@ parameters:
     checkUninitializedProperties: true
     doctrine:
         objectManagerLoader: tests/object-manager.php
+    symfony:
+        containerXmlPath: var/cache/dev/App_KernelDevDebugContainer.xml
+    scanDirectories:
+        - var/cache/dev/Symfony/Config
+    scanFiles:
+        - vendor/symfony/dependency-injection/Loader/Configurator/ContainerConfigurator.php
     ignoreErrors:
         -
             message: '#^Call to function method_exists\(\) with ''Symfony\\\\Component\\\\Dotenv\\\\Dotenv'' and ''bootEnv'' will always evaluate to true\.$#'

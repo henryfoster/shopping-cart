@@ -10,6 +10,8 @@ use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 
 final class BadRequestExceptionListener
 {
+    public const string MESSAGE = 'Bad request. Invalid json.';
+
     #[AsEventListener]
     public function onExceptionEvent(ExceptionEvent $event): void
     {
@@ -19,7 +21,7 @@ final class BadRequestExceptionListener
         if (str_starts_with($pathInfo, '/api/') && $exception instanceof BadRequestHttpException) {
             $response = new JsonResponse(
                 data: [
-                    'error' => 'Bad request. Invalid json.',
+                    'error' => self::MESSAGE,
                 ],
                 status: Response::HTTP_BAD_REQUEST,
                 headers: [

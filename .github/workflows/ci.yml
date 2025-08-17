@@ -43,27 +43,80 @@ jobs:
         run: curl -v --fail-with-body http://localhost
       -
         name: Check HTTPS reachability
-        if: false # Remove this line when the homepage will be configured, or change the path to check
         run: curl -v --insecure --fail-with-body https://localhost
       -
-        name: Check Mercure reachability
-        run: curl -vI --insecure --fail-with-body https://localhost/.well-known/mercure?topic=test
-      -
         name: Create test database
-        if: false # Remove this line if Doctrine ORM is installed
         run: docker compose exec -T php bin/console -e test doctrine:database:create
       -
         name: Run migrations
-        if: false # Remove this line if Doctrine Migrations is installed
         run: docker compose exec -T php bin/console -e test doctrine:migrations:migrate --no-interaction
       -
         name: Run PHPUnit
-        if: false # Remove this line if PHPUnit is installed
-        run: docker compose exec -T php bin/phpunit
+        run: docker compose exec -e XDEBUG_MODE=coverage -T php bin/phpunit --coverage-clover clover.xml
+      -  
+        name: Process and Upload Coverage to Gist
+        if: github.ref == 'refs/heads/main'
+        run: |
+          # Install necessary tools
+          sudo apt-get update && sudo apt-get install -y bc jq libxml2-utils
+
+          # Check if clover.xml exists
+          if [ ! -f clover.xml ]; then
+            echo "clover.xml not found, setting default values"
+            COVERAGE=0
+          else
+            # Extract metrics using xmllint
+            echo "Extracting coverage metrics using xmllint..."
+            STATEMENTS=$(xmllint --xpath "string(//project/metrics/@statements)" clover.xml)
+            COVERED_STATEMENTS=$(xmllint --xpath "string(//project/metrics/@coveredstatements)" clover.xml)
+
+            echo "Total statements: $STATEMENTS"
+            echo "Covered statements: $COVERED_STATEMENTS"
+
+            if [ -n "$STATEMENTS" ] && [ -n "$COVERED_STATEMENTS" ] && [ "$STATEMENTS" -gt 0 ]; then
+              COVERAGE=$(echo "scale=4; ($COVERED_STATEMENTS / $STATEMENTS) * 100" | bc)
+            else
+              COVERAGE=0
+            fi
+          fi
+
+          COVERAGE_ROUNDED=$(printf "%.1f" $COVERAGE)
+          echo "Coverage: $COVERAGE_ROUNDED%"
+
+          # Determine color based on coverage percentage
+          if (( $(echo "$COVERAGE >= 80" | bc -l) )); then
+            COLOR="brightgreen"
+          elif (( $(echo "$COVERAGE >= 70" | bc -l) )); then
+            COLOR="green"
+          elif (( $(echo "$COVERAGE >= 60" | bc -l) )); then
+            COLOR="yellowgreen"
+          elif (( $(echo "$COVERAGE >= 50" | bc -l) )); then
+            COLOR="yellow"
+          else
+            COLOR="red"
+          fi
+
+          # Create JSON payload for shields.io endpoint
+          BADGE_JSON="{\"schemaVersion\": 1, \"label\": \"coverage\", \"message\": \"${COVERAGE_ROUNDED}%\", \"color\": \"$COLOR\"}"
+          echo "$BADGE_JSON" > coverage.json
+
+          # Send as a string to the GitHub API
+          curl -X PATCH \
+            -H "Authorization: token ${{ secrets.GIST_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d "{\"files\": {\"coverage.json\": {\"content\": $(echo "$BADGE_JSON" | jq -Rs .)}}}" \
+            https://api.github.com/gists/${{ secrets.GIST_ID }}
+        env:
+          GIST_TOKEN: ${{ secrets.GIST_TOKEN }}
+          GIST_ID: ${{ secrets.GIST_ID }}
+
       -
         name: Doctrine Schema Validator
-        if: false # Remove this line if Doctrine ORM is installed
         run: docker compose exec -T php bin/console -e test doctrine:schema:validate
+      -  
+        name: PHPStan analysis
+        run: docker compose exec -T php vendor/bin/phpstan analyse src --memory-limit=-1
+        
   lint:
     name: Docker Lint
     runs-on: ubuntu-latest

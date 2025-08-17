@@ -6,8 +6,7 @@ use App\Entity\Cart;
 use App\Entity\CartItem;
 use App\Model\CartItemDto;
 use App\Model\CartItemEditDto;
-use App\Repository\ProductRepository;
-use Doctrine\ORM\EntityManagerInterface;
+use App\Service\CartService;
 use Nelmio\ApiDocBundle\Attribute\Model;
 use OpenApi\Attributes as OA;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -18,20 +17,18 @@ use Symfony\Component\Routing\Attribute\Route;
 #[OA\Tag(name: 'cart', description: 'Cart operations')]
 final class CartApiController extends AbstractController
 {
-    #[Route('/api/carts/{cart}', name: 'app_api_carts_get', methods: ['GET'])]
+    #[Route('/api/carts/{cart}', name: 'app_api_carts_get_item', methods: ['GET'])]
     public function getCart(
         Cart $cart,
     ): Response {
         return $this->json($cart->toArray());
     }
 
-    #[Route('/api/carts', name: 'app_api_carts_post', methods: ['POST'])]
+    #[Route('/api/carts', name: 'app_api_carts_post_collection', methods: ['POST'])]
     public function createCart(
-        EntityManagerInterface $entityManager,
+        CartService $cartService,
     ): Response {
-        $cart = new Cart();
-        $entityManager->persist($cart);
-        $entityManager->flush();
+        $cart = $cartService->createNewCart();
 
         return $this->json(
             data: $cart->toArray(),
@@ -40,26 +37,14 @@ final class CartApiController extends AbstractController
     }
 
     #[OA\RequestBody(content: new Model(type: CartItemDto::class))]
-    #[Route('/api/carts/{cart}/cart-items', name: 'app_carts_items_post', methods: ['POST'])]
+    #[Route('/api/carts/{cart}/cart-items', name: 'app_api_carts_items_post_collection', methods: ['POST'])]
     public function addCartItem(
         Cart $cart,
         #[MapRequestPayload]
         CartItemDto $cartItemDto,
-        ProductRepository $productRepository,
-        EntityManagerInterface $entityManager,
+        CartService $cartService,
     ): Response {
-        $product = $productRepository->find($cartItemDto->productId); // todo: extract into service
-
-        $cartItem = $cart->findItemByProductId($product->getId());
-        if ($cartItem) {
-            $cartItem->setAmount($cartItem->getAmount() + $cartItemDto->amount);
-        } else {
-            $cartItem = new CartItem(amount: $cartItemDto->amount, cart: $cart, product: $product);
-            $cart->addCartItem($cartItem);
-        }
-
-        $entityManager->persist($cart);
-        $entityManager->flush();
+        $cartItem = $cartService->addCartItemToCart($cartItemDto, $cart);
 
         return $this->json(
             data: $cartItem->toArray(),
@@ -67,28 +52,26 @@ final class CartApiController extends AbstractController
         );
     }
 
-    #[Route('/api/cart-items/{cartItem}', name: 'app_items_delete', methods: ['DELETE'])]
+    #[Route('/api/cart-items/{cartItem}', name: 'app_api_items_delete_item', methods: ['DELETE'])]
     public function deleteCartItem(
         CartItem $cartItem,
-        EntityManagerInterface $entityManager,
+        CartService $cartService,
     ): Response {
-        $entityManager->remove($cartItem);
-        $entityManager->flush();
+        $cartService->removeCartItem($cartItem);
 
-        return new Response(status: 204);
+        return new Response(status: Response::HTTP_NO_CONTENT);
     }
 
-    #[OA\RequestBody(content: new Model(type: CartItemEditDto::class))] // todo: add response model for api
-    #[Route('/api/cart-items/{cartItem}', name: 'app_items_edit', methods: ['PUT'])] // todo: make named param say cartItemId and expect integer
+    #[OA\RequestBody(content: new Model(type: CartItemEditDto::class))]
+    #[Route('/api/cart-items/{cartItem}', name: 'app_api_items_edit_item', methods: ['PUT'])]
     public function editCartItem(
         CartItem $cartItem,
         #[MapRequestPayload]
         CartItemEditDto $cartItemEditDto,
-        EntityManagerInterface $entityManager,
+        CartService $cartService,
     ): Response {
-        $cartItem->setAmount($cartItemEditDto->amount);
-        $entityManager->flush();
+        $cartService->updateCartItem($cartItem, $cartItemEditDto);
 
-        return $this->json($cartItem->toArray()); // todo: make sure all status codes are correct
+        return $this->json($cartItem->toArray());
     }
 }

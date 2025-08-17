@@ -3,13 +3,14 @@
 namespace App\Controller;
 
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\Routing\Attribute\Route;
 
 class Index extends AbstractController
 {
     #[Route('/')]
-    public function index()
+    public function index(): RedirectResponse
     {
-        return $this->render('base.html.twig');
+        return $this->redirectToRoute('app.swagger_ui');
     }
 }

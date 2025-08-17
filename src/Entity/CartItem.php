@@ -20,10 +20,11 @@ class CartItem
     private int $amount;
 
     #[ORM\ManyToOne(inversedBy: 'cartItems')]
-    #[ORM\JoinColumn(nullable: false)]
+    #[ORM\JoinColumn(nullable: false, onDelete: 'CASCADE')]
     private Cart $cart;
 
     #[ORM\ManyToOne(inversedBy: 'cartItems')]
+    #[ORM\JoinColumn(nullable: false, onDelete: 'CASCADE')]
     private Product $product;
 
     public function __construct(int $amount, Cart $cart, Product $product)
@@ -81,10 +82,14 @@ class CartItem
         return $this->getProduct()->getPriceInCent() * $this->amount;
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     public function toArray(): array
     {
         return [
             'id' => $this->id,
+            'productId' => $this->product->getId(),
             'productName' => $this->product->getName(),
             'productPricePerItemInCent' => $this->product->getPriceInCent(),
             'productPriceTotalInCent' => $this->getTotalCartItemPrice(),
