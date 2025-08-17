@@ -49,12 +49,12 @@ final readonly class CartService
         if (!$product) {
             $errorMessage = 'Product with id '.$cartItemDto->productId.' not found.';
             $violation = new ConstraintViolation(
-                $errorMessage,
-                null,
-                [],
-                $cartItemDto->productId,
-                'productId',
-                $cartItemDto->productId
+                message: $errorMessage,
+                messageTemplate: null,
+                parameters: [],
+                root: $cartItemDto->productId,
+                propertyPath: 'productId',
+                invalidValue: $cartItemDto->productId,
             );
             $violations = new ConstraintViolationList([$violation]);
             throw new ValidationFailedException($cartItemDto, $violations);

@@ -4,6 +4,7 @@ namespace App\EventListener;
 
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 use Symfony\Component\HttpFoundation\JsonResponse;
+use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Event\ExceptionEvent;
 use Symfony\Component\Validator\Exception\ValidationFailedException;
 
@@ -36,7 +37,7 @@ final class ValidationFailedExceptionListener
                 data: [
                     'violations' => $violationsArray,
                 ],
-                status: 422,
+                status: Response::HTTP_UNPROCESSABLE_ENTITY,
                 headers: [
                     'Content-Type' => 'application/json',
                 ],
