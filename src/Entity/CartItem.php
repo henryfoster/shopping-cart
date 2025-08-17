@@ -7,6 +7,7 @@ use App\Repository\CartItemRepository;
 use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity(repositoryClass: CartItemRepository::class)]
+#[ORM\HasLifecycleCallbacks]
 class CartItem
 {
     use TimeStampable;
